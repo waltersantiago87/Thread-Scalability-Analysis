@@ -4,37 +4,59 @@
 #include <stdint.h>
 #include <omp.h>
 
+
+static inline void row_ijk(const double *a,
+                           const double *b,
+                           double *c, int n, int i) {
+    for (int j = 0; j < n; j++) {
+        double sum = 0.0;
+
+        for (int k = 0; k < n; k++) {
+            sum += a[(size_t)i * n + k]
+                 * b[(size_t)k * n + j];
+        }
+
+        c[(size_t)i * n + j] = sum;
+    }
+}
+
+static inline void row_ikj(const double *a,
+                           const double *b,
+                           double *c, int n, int i) {
+    for (int k = 0; k < n; k++) {
+        double value = a[(size_t)i * n + k];
+
+        for (int j = 0; j < n; j++) {
+            c[(size_t)i * n + j] +=
+                value * b[(size_t)k * n + j];
+        }
+    }
+}
+
 void multiply_ijk(const double *a, const double *b,
                   double *c, int n, int parallel) {
-
-    #pragma omp parallel for if(parallel) schedule(static)
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            double sum = 0.0;
-
-            for (int k = 0; k < n; k++) {
-                sum += a[(size_t)i * n + k]
-                     * b[(size_t)k * n + j];
-            }
-
-            c[(size_t)i * n + j] = sum;
+    if (parallel) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < n; i++) {
+            row_ijk(a, b, c, n, i);
+        }
+    } else {
+        for (int i = 0; i < n; i++) {
+            row_ijk(a, b, c, n, i);
         }
     }
 }
 
 void multiply_ikj(const double *a, const double *b,
                   double *c, int n, int parallel) {
-
-    #pragma omp parallel for if(parallel) schedule(static)
-    for (int i = 0; i < n; i++) {
-        for (int k = 0; k < n; k++) {
-
-            double value = a[(size_t)i * n + k];
-
-            for (int j = 0; j < n; j++) {
-                c[(size_t)i * n + j] +=
-                    value * b[(size_t)k * n + j];
-            }
+    if (parallel) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < n; i++) {
+            row_ikj(a, b, c, n, i);
+        }
+    } else {
+        for (int i = 0; i < n; i++) {
+            row_ikj(a, b, c, n, i);
         }
     }
 }
